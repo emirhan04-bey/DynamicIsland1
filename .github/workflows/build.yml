@@ -1,3 +1,4 @@
+
 name: CART3R APK Build
 
 on:
@@ -11,34 +12,52 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Java
+      - name: Java Setup
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Python
+      - name: Python Setup
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: System dependencies
+      - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev
-
-      - name: Build tools
-        run: |
+          sudo apt-get install -y \
+            git zip unzip \
+            autoconf libtool pkg-config \
+            zlib1g-dev libncurses5-dev \
+            libncursesw5-dev cmake \
+            libffi-dev libssl-dev
           python -m pip install --upgrade pip setuptools wheel
           pip install buildozer cython==0.29.34
 
       - name: Build APK
+        id: build
+        continue-on-error: true
         run: |
-          buildozer -v android debug
+          set -o pipefail
+          buildozer -v android debug 2>&1 | tee build.log
 
-      - name: Upload APK
+      - name: Upload Build Log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CART3R-APK
+          name: CART3R-Build-Log
+          path: build.log
+
+      - name: Upload APK
+        if: steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CART3R-Dynamic-Island-APK
           path: bin/*.apk
           if-no-files-found: error
+
+      - name: Check Build Result
+        if: always() && steps.build.outcome != 'success'
+        run: exit 1
+        
