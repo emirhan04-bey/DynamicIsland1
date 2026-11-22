@@ -41,6 +41,10 @@ jobs:
         run: |
           set -o pipefail
           buildozer -v android debug 2>&1 | tee build.log
+          BUILD_STATUS=${PIPESTATUS[0]}
+          echo "BUILD_STATUS=$BUILD_STATUS"
+          grep -n -i -E "error|failed|exception|traceback" build.log | tail -40 || true
+          exit "$BUILD_STATUS"
 
       - name: Upload Build Log
         if: always()
@@ -48,6 +52,7 @@ jobs:
         with:
           name: CART3R-Build-Log
           path: build.log
+          if-no-files-found: warn
 
       - name: Upload APK
         if: steps.build.outcome == 'success'
